@@ -12,7 +12,24 @@ logger = logging.getLogger(__file__)
 
 
 def get_product_list(last_id, client_id, seller_token):
-    """Получить список товаров магазина озон"""
+    """Получает список товаров магазина озон
+     
+    Args:
+        last_id (str): идентификатор последнего значения на странице (ozon API)
+        client_id (str): идентификатор клиента в сервисе ozon
+        seller_token (str): ключ API
+    
+    Returns:
+        dict: response_object.get('result') - Список товаров из json-ответа API.
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+        ValueError: отсутствует (неверное) значение client_id / seller_token
+
+    Example:
+        result = get_product_list(last_id, client_id, seller_token)
+        
+    """
     url = "https://api-seller.ozon.ru/v2/product/list"
     headers = {
         "Client-Id": client_id,
@@ -32,7 +49,24 @@ def get_product_list(last_id, client_id, seller_token):
 
 
 def get_offer_ids(client_id, seller_token):
-    """Получить артикулы товаров магазина озон"""
+
+    """Получает артикулы товаров магазина озон
+     
+    Args:
+        client_id (str): идентификатор клиента в сервисе ozon
+        seller_token (str): ключ API
+    
+    Returns:
+        list: offer_ids - Список идентификаторов товара (артикулы)
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+        ValueError: отсутствует (неверное) значение client_id / seller_token
+
+    Example:
+        offer_ids = get_offer_ids(client_id, seller_token)
+        
+    """
     last_id = ""
     product_list = []
     while True:
@@ -49,7 +83,26 @@ def get_offer_ids(client_id, seller_token):
 
 
 def update_price(prices: list, client_id, seller_token):
-    """Обновить цены товаров"""
+    
+    """Обновляет цены товаров
+     
+    Args:
+        prices (list): список с ценами товаров
+        client_id (str): идентификатор клиента в сервисе ozon
+        seller_token (str): ключ API
+    
+    Returns:
+        response.json() - Ответ API о результате загрузки
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+        ValueError: отсутствует (неверное) значение client_id / seller_token
+
+    Example:
+        update_price(prices: list, client_id, seller_token)
+        >>> 200 OK
+        
+    """
     url = "https://api-seller.ozon.ru/v1/product/import/prices"
     headers = {
         "Client-Id": client_id,
@@ -62,7 +115,24 @@ def update_price(prices: list, client_id, seller_token):
 
 
 def update_stocks(stocks: list, client_id, seller_token):
-    """Обновить остатки"""
+    """Обновляет остатки товаров на OZON
+     
+    Args:
+        stocks (list): список с остатками товаров
+        client_id (str): идентификатор клиента в сервисе ozon
+        seller_token (str): ключ API
+    
+    Returns:
+        response.json() - Ответ API о результате загрузки
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+        ValueError: отсутствует (неверное) значение client_id / seller_token
+
+    Example:
+        update_stocks(stocks: list, client_id, seller_token)
+        >>> 200 OK
+    """
     url = "https://api-seller.ozon.ru/v1/product/import/stocks"
     headers = {
         "Client-Id": client_id,
@@ -75,8 +145,22 @@ def update_stocks(stocks: list, client_id, seller_token):
 
 
 def download_stock():
-    """Скачать файл ostatki с сайта casio"""
-    # Скачать остатки с сайта
+    """Скачивает остатки товара с сайта Casio в виде архива ostatki.zip
+     
+    Args:
+              
+    Returns:
+        dict: watch_remnants - словарь содержащий список остатков часов
+        
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+        zipfile.BadZipFile: битый zip-архив
+        FileExistsError: архив уже есть в папке
+        FileNotFoundError: архив не содержит файла ostatki.xls
+    
+    Example:
+        watch_remnants = download_stock()
+    """
     casio_url = "https://timeworld.ru/upload/files/ostatki.zip"
     session = requests.Session()
     response = session.get(casio_url)
@@ -96,7 +180,23 @@ def download_stock():
 
 
 def create_stocks(watch_remnants, offer_ids):
-    # Уберем то, что не загружено в seller
+    
+    """Создает список товара (Артикул, Кол-во)
+     
+    Args:
+        watch_remnants (dict): словарь, содержащий список остатков часов
+        offer_ids (list) - Список идентификаторов товара (артикулы)
+            
+    Returns:
+        list: stocks - Список с остатками товара
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+        ValueError: отсутствует (неверное) значение client_id / seller_token
+
+    Example:
+        stocks = create_stocks(watch_remnants, offer_ids)
+    """
     stocks = []
     for watch in watch_remnants:
         if str(watch.get("Код")) in offer_ids:
@@ -109,13 +209,28 @@ def create_stocks(watch_remnants, offer_ids):
                 stock = int(watch.get("Количество"))
             stocks.append({"offer_id": str(watch.get("Код")), "stock": stock})
             offer_ids.remove(str(watch.get("Код")))
-    # Добавим недостающее из загруженного:
     for offer_id in offer_ids:
         stocks.append({"offer_id": offer_id, "stock": 0})
     return stocks
 
 
 def create_prices(watch_remnants, offer_ids):
+    """Создает список, содержащий Артикул и Стоимость товара.
+     
+    Args:
+        watch_remnants (dict): словарь, содержащий список остатков часов
+        offer_ids (list) - Список идентификаторов товара (артикулы)
+            
+    Returns:
+        list: prices - Список с ценами на товар
+    
+    Exception:
+        AttributeError:
+            В функцию price_conversion должно быть передано строковое значение.
+
+    Example:
+        prices = create_prices(watch_remnants, offer_ids
+    """
     prices = []
     for watch in watch_remnants:
         if str(watch.get("Код")) in offer_ids:
@@ -131,7 +246,23 @@ def create_prices(watch_remnants, offer_ids):
 
 
 def price_conversion(price: str) -> str:
-    """Преобразовать цену. Пример: 5'990.00 руб. -> 5990"""
+    """Преобразовывает цену, убирая нечисловые символы.
+    
+    Args:
+        price (str): переменная содержит цену на товар
+    
+    Returns:
+        Строка из цифр.   
+    
+    Exception:
+        AttributeError:
+            В функцию должно быть передано строковое значение.
+
+    Example:
+        price_conversion(5'990.00 руб.) -> 5990
+        price_conversion(abc) -> ''
+
+    """
     return re.sub("[^0-9]", "", price.split(".")[0])
 
 
@@ -142,6 +273,23 @@ def divide(lst: list, n: int):
 
 
 async def upload_prices(watch_remnants, client_id, seller_token):
+    """Загружает цены на OZON.
+    
+    Args:
+        watch_remnants (dict): словарь, содержащий список остатков часов
+        client_id (str): идентификатор клиента в сервисе ozon
+        seller_token (str): ключ API
+    
+    Returns:
+        list: prices - Список с ценами на товар   
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+
+    Example:
+        prices = upload_prices(watch_remnants, client_id, seller_token)
+    
+    """
     offer_ids = get_offer_ids(client_id, seller_token)
     prices = create_prices(watch_remnants, offer_ids)
     for some_price in list(divide(prices, 1000)):
@@ -150,6 +298,23 @@ async def upload_prices(watch_remnants, client_id, seller_token):
 
 
 async def upload_stocks(watch_remnants, client_id, seller_token):
+    """Формирует и загружает остатки товара на OZON.
+    
+    Args:
+        watch_remnants (dict): словарь, содержащий список остатков часов
+        client_id (str): идентификатор клиента в сервисе ozon
+        seller_token (str): ключ API
+    
+    Returns:
+        list: stocks - Список всех товаров на складе
+        list: not_empty - Список товаров с ненулевым остатком   
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+
+    Example:
+        upload_stocks(watch_remnants, client_id, seller_token) --> not_empty, stocks
+    """
     offer_ids = get_offer_ids(client_id, seller_token)
     stocks = create_stocks(watch_remnants, offer_ids)
     for some_stock in list(divide(stocks, 100)):
