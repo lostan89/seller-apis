@@ -11,6 +11,23 @@ logger = logging.getLogger(__file__)
 
 
 def get_product_list(page, campaign_id, access_token):
+    """Получает список товаров магазина яндекс маркет
+     
+    Args:
+        page (str): идентификатор страницы с результатами
+        campaign_id (int): идентификатор кампании (магазина)
+        access_token (str): ключ API
+    
+    Returns:
+        dict: response_object.get('result') - Список товаров из json-ответа API.
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+
+    Example:
+        result = get_product_list(page, campaign_id, access_token)
+        
+    """
     endpoint_url = "https://api.partner.market.yandex.ru/"
     headers = {
         "Content-Type": "application/json",
@@ -30,6 +47,23 @@ def get_product_list(page, campaign_id, access_token):
 
 
 def update_stocks(stocks, campaign_id, access_token):
+     """Обновляет информацию об остатках на маркете
+     
+    Args:
+        stocks (dict): информация об остатках
+        campaign_id (int): идентификатор кампании (магазина)
+        access_token (str): ключ API
+    
+    Returns:
+        dict: response_object - Словарь, включающий информацию об остатках.
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+
+    Example:
+        response_object = update_stocks(stocks, campaign_id, access_token)
+        
+    """
     endpoint_url = "https://api.partner.market.yandex.ru/"
     headers = {
         "Content-Type": "application/json",
@@ -46,6 +80,23 @@ def update_stocks(stocks, campaign_id, access_token):
 
 
 def update_price(prices, campaign_id, access_token):
+     """Обновляет стоимость товара на маркете
+     
+    Args:
+        prices (dict): информация о стоимости товаров
+        campaign_id (int): идентификатор кампании (магазина)
+        access_token (str): ключ API
+    
+    Returns:
+        dict: response_object - Словарь, включающий информацию о стоимости товаров.
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+
+    Example:
+        response_object = update_price(prices, campaign_id, access_token)
+        
+    """
     endpoint_url = "https://api.partner.market.yandex.ru/"
     headers = {
         "Content-Type": "application/json",
@@ -62,7 +113,23 @@ def update_price(prices, campaign_id, access_token):
 
 
 def get_offer_ids(campaign_id, market_token):
-    """Получить артикулы товаров Яндекс маркета"""
+     """Получает артикулы товара на Яндекс маркете
+     
+    Args:
+        campaign_id (int): идентификатор кампании (магазина)
+        market_token (str): ключ API
+    
+    Returns:
+        list: offer_ids - Список всех артикулов товара.
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+        AttributeError: отсутствие аттрибутов "offer" и "shopSKU"
+
+    Example:
+        offer_ids = get_offer_ids(campaign_id, market_token)
+        
+    """
     page = ""
     product_list = []
     while True:
@@ -78,7 +145,23 @@ def get_offer_ids(campaign_id, market_token):
 
 
 def create_stocks(watch_remnants, offer_ids, warehouse_id):
-    # Уберем то, что не загружено в market
+     """Формирует данные об остатках товара
+     
+    Args:
+        watch_remnants (dict): watch_remnants - словарь, содержащий список остатков часов с сайта Casio
+        offer_ids (list): список артикулов товара
+        warehouse_id (int): Идентификатор склада
+    
+    Returns:
+        list: stocks - Список всех артикулов товара.
+    
+    Exception:
+        ValueError: если значение "Количество" невозможно преобразовать в int 
+
+    Example:
+        stocks = create_stocks(watch_remnants, offer_ids, warehouse_id)
+        
+    """
     stocks = list()
     date = str(datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z")
     for watch in watch_remnants:
@@ -123,6 +206,22 @@ def create_stocks(watch_remnants, offer_ids, warehouse_id):
 
 
 def create_prices(watch_remnants, offer_ids):
+    """Формирует прайс-лист на часы в наличии
+     
+    Args:
+        watch_remnants (dict): watch_remnants - словарь, содержащий список остатков часов с сайта Casio
+        offer_ids (list): список артикулов товара
+    
+    Returns:
+        list: prices - Прайс-лист на часы
+    
+    Exception:
+        AttributeError: В функцию price_conversion должно быть передано строковое значение.
+    
+    Example:
+        prices = create_prices(watch_remnants, offer_ids)
+        
+    """
     prices = []
     for watch in watch_remnants:
         if str(watch.get("Код")) in offer_ids:
@@ -143,6 +242,24 @@ def create_prices(watch_remnants, offer_ids):
 
 
 async def upload_prices(watch_remnants, campaign_id, market_token):
+    """Обновляет цены на товар на Яндекс маркете
+     
+    Args:
+        watch_remnants (dict): watch_remnants - словарь, содержащий список остатков часов с сайта Casio
+        campaign_id (int): идентификатор кампании (магазина)
+        market_token (str): ключ API
+    
+    Returns:
+        list: prices - Прайс-лист на часы.
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+        AttributeError: отсутствие аттрибутов "offer" и "shopSKU"
+
+    Example:
+        prices = upload_prices(watch_remnants, campaign_id, market_token)
+        
+    """
     offer_ids = get_offer_ids(campaign_id, market_token)
     prices = create_prices(watch_remnants, offer_ids)
     for some_prices in list(divide(prices, 500)):
@@ -151,6 +268,26 @@ async def upload_prices(watch_remnants, campaign_id, market_token):
 
 
 async def upload_stocks(watch_remnants, campaign_id, market_token, warehouse_id):
+    """Формирует данные об остатках товара на Яндекс маркете
+     
+    Args:
+        watch_remnants (dict): watch_remnants - словарь, содержащий список остатков часов с сайта Casio
+        campaign_id (int): идентификатор кампании (магазина)
+        market_token (str): ключ API
+        warehouse_id (int): Идентификатор склада
+    
+    Returns:
+        list: not_empty - Список товаров с Яндекс маркета с ненулевым остатком.
+        list: stocks - Список товаров с Яндекс маркета, включая нулевой остаток
+    
+    Exception:
+        requests.exceptions.HTTPError: ошибка обращения к серверу
+        AttributeError: отсутствие аттрибутов "offer" и "shopSKU"
+
+    Example:
+        not_empty, stocks = upload_stocks(watch_remnants, campaign_id, market_token, warehouse_id)
+        
+    """
     offer_ids = get_offer_ids(campaign_id, market_token)
     stocks = create_stocks(watch_remnants, offer_ids, warehouse_id)
     for some_stock in list(divide(stocks, 2000)):
